@@ -55,3 +55,18 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# .NET
+bin/
+obj/
+*.user
+.vs/
+.idea/
+
+# Angular
+node_modules/
+dist/
+.angular/
+
+# Docker
+docker/.env
