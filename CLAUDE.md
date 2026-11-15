@@ -7,6 +7,30 @@ Seminarski rad iz predmeta Razvoj softvera 2: platforma za posredovanje u prodaj
 - Dokumentacija i commit poruke su na srpskom (latinica).
 - Commit poruke prate oblik `tip: opis` malim slovima, npr. `build: docker okruzenje sa postgres bazom i pgadmin-om`.
 
+## Grane i pull request-ovi
+
+Podrazumevana grana je `develop`. Pravila ispod sprovodi GitHub kroz dva ruleset-a (Settings → Rules → Rulesets), `develop` i `main`, i važe i za admine.
+
+- Nova grana se uvek pravi iz `develop`, a pull request se otvara ka `develop`.
+- Nazivi grana prate oblik `tip/opis`, npr. `build/solution`.
+- Direktan push na `develop` nije moguć; izmene ulaze samo kroz pull request. Odobrenje drugog člana nije obavezno.
+- Grana `main` je za sada zaključana: ni push ni spajanje pull request-a.
+- Na `develop` i `main` su zabranjeni force push i brisanje grane, pa se commit-i koji su jednom ušli ne mogu menjati ni brisati. Greška se ispravlja novim commit-om (`git revert`) kroz novi pull request.
+- Na radnim granama nema ograničenja: dok pull request nije spojen, commit-i se mogu menjati i slati sa force push-om.
+- Ne predlagati zaobilaženje pravila (gašenje ruleset-a, bypass lista). Ako pravilo smeta, to je odluka tima.
+
+## CI
+
+- `.github/workflows/build.yml`: za svaki pull request ka `develop` i posle spajanja pokreće `dotnet build` i `dotnet test` nad `RealEstate.slnx`. Treba da prođe pre spajanja, ali još nije obavezna provera u ruleset-u.
+- `.github/workflows/zakljucan-main.yml`: svaki pull request ka `main` dobija crvenu proveru, kao podsetnik da se cilja `develop`.
+- Workflow ne može da zabrani push; to rade ruleset-i.
+
+## Solution i zajednička podešavanja
+
+- `RealEstate.slnx` nabraja sve .NET projekte. Novi projekat se dodaje sa `dotnet sln RealEstate.slnx add <putanja do .csproj>`, inače ga CI ne gradi.
+- `Directory.Build.props` važi za sve projekte u repou: `net10.0`, `Nullable` i `ImplicitUsings`. Ta podešavanja se ne ponavljaju u pojedinačnim `.csproj` fajlovima.
+- `.editorconfig` određuje formatiranje: UTF-8, LF, 2 razmaka, a 4 razmaka za C#.
+
 ## Razvojno okruženje
 
 Razvija se u Dev Containeru (`.devcontainer/devcontainer.json`), ne na lokalno instaliranom SDK-u.

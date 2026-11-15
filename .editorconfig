@@ -1,0 +1,19 @@
+# Pravila formatiranja, ista za sve u timu. Editor ih primenjuje sam.
+root = true
+
+# Važi za sve fajlove
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# C# kod: uvlačenje od 4 razmaka
+[*.cs]
+indent_size = 4
+
+# U Markdown-u dva razmaka na kraju reda znače novi red, pa se ne brišu
+[*.md]
+trim_trailing_whitespace = false
