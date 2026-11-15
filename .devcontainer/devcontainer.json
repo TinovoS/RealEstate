@@ -1,0 +1,19 @@
+{
+  "name": "RealEstate",
+  "image": "mcr.microsoft.com/devcontainers/dotnet:10.0",
+  "mounts": [
+    "source=realestate-claude-config,target=/home/vscode/.claude,type=volume"
+  ],
+  "containerEnv": {
+    "CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csdevkit",
+        "anthropic.claude-code"
+      ]
+    }
+  },
+  "postCreateCommand": "sudo chown -R vscode:vscode /home/vscode/.claude && dotnet --version"
+}
