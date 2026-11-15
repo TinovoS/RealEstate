@@ -1,0 +1,16 @@
+# Grana main je zaključana: svaki pull request ka njoj dobija crvenu proveru.
+# Sam push ne može da zabrani workflow, nego pravila grana (Rulesets) na GitHub-u.
+name: zakljucan-main
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  zakljucan-main:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Odbij pull request ka main
+        run: |
+          echo "::error::Grana main je zaključana. Pull request se otvara ka grani develop."
+          exit 1

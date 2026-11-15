@@ -1,0 +1,26 @@
+# Proverava da se ceo solution kompajlira i da testovi prolaze.
+name: build
+
+on:
+  pull_request:
+    branches: [develop]
+  push:
+    branches: [develop, main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Preuzmi kod
+        uses: actions/checkout@v7
+
+      - name: Instaliraj .NET 10 SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build
+        run: dotnet build RealEstate.slnx
+
+      - name: Testovi
+        run: dotnet test RealEstate.slnx --no-build
