@@ -70,3 +70,7 @@ dist/
 
 # Docker
 docker/.env
+
+# Claude Code (licna podesavanja)
+CLAUDE.local.md
+.claude/settings.local.json

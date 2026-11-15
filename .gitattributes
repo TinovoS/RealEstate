@@ -1,0 +1,3 @@
+# Isti krajevi redova (LF) na Windows-u i u Linux kontejneru.
+# Bez ovoga Git u Dev Containeru prikazuje sve fajlove kao izmenjene.
+* text=auto eol=lf
