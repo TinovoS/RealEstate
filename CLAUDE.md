@@ -22,7 +22,7 @@ Podrazumevana grana je `develop`. Pravila ispod sprovodi GitHub kroz dva ruleset
 ## CI
 
 - `.github/workflows/build.yml` se pokreće za svaki pull request ka `develop` i posle spajanja. Ima dva posla nad `RealEstate.slnx`: `build` (`dotnet build`) i `test` (`dotnet test`), koji kreće tek kad `build` uspe.
-- Provere `build` i `test` su obavezne u ruleset-u `develop`: pull request ne može da se spoji dok obe ne prođu.
+- U ruleset-u `develop` obavezna je provera `build`: pull request ne može da se spoji dok ona ne prođe. Provera `test` se izvršava, ali još nije obavezna.
 - `.github/workflows/zakljucan-main.yml`: svaki pull request ka `main` dobija crvenu proveru, kao podsetnik da se cilja `develop`.
 - Workflow ne može da zabrani push; to rade ruleset-i.
 
@@ -38,6 +38,16 @@ Podrazumevana grana je `develop`. Pravila ispod sprovodi GitHub kroz dva ruleset
 - `RealEstate.slnx` nabraja sve .NET projekte. Novi projekat se dodaje sa `dotnet sln RealEstate.slnx add <putanja do .csproj>`, inače ga CI ne gradi.
 - `Directory.Build.props` važi za sve projekte u repou: `net10.0`, `Nullable` i `ImplicitUsings`. Ta podešavanja se ne ponavljaju u pojedinačnim `.csproj` fajlovima.
 - `.editorconfig` određuje formatiranje: UTF-8, LF, 2 razmaka, a 4 razmaka za C#.
+- Microsoft-ovi paketi (`Microsoft.*`) i alat `dotnet-ef` moraju biti iz serije 10.0.x. `dotnet add package` bez `--version` bira seriju 11, koja ne radi sa `net10.0` (greška `NU1202`).
+
+## Baza i migracije
+
+- Iz Dev Containera se Postgres vidi na `host.docker.internal:5432`. Na domaćinu mora biti pokrenut `docker compose up -d`.
+- Alat `dotnet-ef` je upisan u `dotnet-tools.json`. Posle kloniranja ili rebuild-a kontejnera instalira se sa `dotnet tool restore`.
+- Migracije servisa stoje u `Data/Migrations` unutar projekta i idu u Git. Komande se kucaju iz korena repoa:
+  - nova migracija: `dotnet ef migrations add <Ime> --project services/Identity/Identity.Api --output-dir Data/Migrations`
+  - izvršavanje nad bazom: `dotnet ef database update --project services/Identity/Identity.Api`
+- Migracija koja je već spojena u `develop` se ne menja. Izmena tabela ide kroz novu migraciju.
 
 ## Razvojno okruženje
 
