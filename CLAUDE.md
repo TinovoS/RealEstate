@@ -21,9 +21,17 @@ Podrazumevana grana je `develop`. Pravila ispod sprovodi GitHub kroz dva ruleset
 
 ## CI
 
-- `.github/workflows/build.yml`: za svaki pull request ka `develop` i posle spajanja pokreće `dotnet build` i `dotnet test` nad `RealEstate.slnx`. Provera `build` je obavezna u ruleset-u `develop`: pull request ne može da se spoji dok ne prođe.
+- `.github/workflows/build.yml` se pokreće za svaki pull request ka `develop` i posle spajanja. Ima dva posla nad `RealEstate.slnx`: `build` (`dotnet build`) i `test` (`dotnet test`), koji kreće tek kad `build` uspe.
+- Provere `build` i `test` su obavezne u ruleset-u `develop`: pull request ne može da se spoji dok obe ne prođu.
 - `.github/workflows/zakljucan-main.yml`: svaki pull request ka `main` dobija crvenu proveru, kao podsetnik da se cilja `develop`.
 - Workflow ne može da zabrani push; to rade ruleset-i.
+
+## Testovi
+
+- Test projekat stoji pored projekta koji testira i nosi njegovo ime sa nastavkom `.Tests`: `services/<Servis>/<Projekat>.Tests`, npr. `services/Identity/Identity.Api.Tests`. Za gateway je to `gateway/<Projekat>.Tests`.
+- Testovi se pišu u xUnit-u. Novi test projekat se pravi sa `dotnet new xunit` i dodaje u `RealEstate.slnx`; CI pokreće samo testove iz solution-a.
+- Lokalno se svi testovi pokreću sa `dotnet test RealEstate.slnx`.
+- U CI-ju nema baze ni drugih servisa, pa test koji ih traži tamo pada.
 
 ## Solution i zajednička podešavanja
 

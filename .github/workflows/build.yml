@@ -1,4 +1,4 @@
-# Proverava da se ceo solution kompajlira i da testovi prolaze.
+# Dva posla: build kompajlira ceo solution, a test pokreće testove tek kad build uspe.
 name: build
 
 on:
@@ -22,5 +22,17 @@ jobs:
       - name: Build
         run: dotnet build RealEstate.slnx
 
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Preuzmi kod
+        uses: actions/checkout@v7
+
+      - name: Instaliraj .NET 10 SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
       - name: Testovi
-        run: dotnet test RealEstate.slnx --no-build
+        run: dotnet test RealEstate.slnx
