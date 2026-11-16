@@ -1,1 +1,5 @@
 @Identity.Api_HostAddress = http://localhost:5001
+
+### Da li servis radi i da li vidi bazu
+GET {{Identity.Api_HostAddress}}/api/health
+Accept: application/json
