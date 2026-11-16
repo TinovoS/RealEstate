@@ -1,2 +1,6 @@
 <Solution>
+  <Folder Name="/services/" />
+  <Folder Name="/services/Identity/">
+    <Project Path="services/Identity/Identity.Api/Identity.Api.csproj" />
+  </Folder>
 </Solution>

@@ -21,7 +21,7 @@ Podrazumevana grana je `develop`. Pravila ispod sprovodi GitHub kroz dva ruleset
 
 ## CI
 
-- `.github/workflows/build.yml`: za svaki pull request ka `develop` i posle spajanja pokreće `dotnet build` i `dotnet test` nad `RealEstate.slnx`. Treba da prođe pre spajanja, ali još nije obavezna provera u ruleset-u.
+- `.github/workflows/build.yml`: za svaki pull request ka `develop` i posle spajanja pokreće `dotnet build` i `dotnet test` nad `RealEstate.slnx`. Provera `build` je obavezna u ruleset-u `develop`: pull request ne može da se spoji dok ne prođe.
 - `.github/workflows/zakljucan-main.yml`: svaki pull request ka `main` dobija crvenu proveru, kao podsetnik da se cilja `develop`.
 - Workflow ne može da zabrani push; to rade ruleset-i.
 
