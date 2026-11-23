@@ -3,3 +3,48 @@
 ### Da li servis radi i da li vidi bazu
 GET {{Identity.Api_HostAddress}}/api/health
 Accept: application/json
+
+### Registracija: uspešna (201). Drugi put sa istim mejlom vraća 409.
+POST {{Identity.Api_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "pera@example.com",
+  "password": "Lozinka123",
+  "firstName": "Pera",
+  "lastName": "Perić",
+  "role": "Buyer"
+}
+
+### Registracija: slaba lozinka (400)
+POST {{Identity.Api_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "mika@example.com",
+  "password": "lozinka",
+  "firstName": "Mika",
+  "lastName": "Mikić",
+  "role": "Seller"
+}
+
+### Registracija: nepostojeća uloga (400)
+POST {{Identity.Api_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "laza@example.com",
+  "password": "Lozinka123",
+  "firstName": "Laza",
+  "lastName": "Lazić",
+  "role": "Admin"
+}
+
+### Registracija: nedostaju polja i loš mejl (400)
+POST {{Identity.Api_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "nije-mejl",
+  "password": "Lozinka123"
+}
