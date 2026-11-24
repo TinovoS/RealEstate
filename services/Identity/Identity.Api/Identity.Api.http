@@ -48,3 +48,30 @@ Content-Type: application/json
   "email": "nije-mejl",
   "password": "Lozinka123"
 }
+
+### Prijava: uspešna (200, vraća token). Korisnik mora prvo biti registrovan.
+POST {{Identity.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "pera@example.com",
+  "password": "Lozinka123"
+}
+
+### Prijava: pogrešna lozinka (401)
+POST {{Identity.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "pera@example.com",
+  "password": "Pogresna123"
+}
+
+### Prijava: nepostojeći mejl (401, isti odgovor kao za pogrešnu lozinku)
+POST {{Identity.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "niko@example.com",
+  "password": "Lozinka123"
+}
