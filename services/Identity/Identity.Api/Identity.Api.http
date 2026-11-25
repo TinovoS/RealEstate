@@ -79,8 +79,37 @@ Content-Type: application/json
 }
 
 ### Moj profil (200). Prvo pošalji zahtev "login" iznad.
+# @name me
 GET {{Identity.Api_HostAddress}}/api/users/me
 Authorization: Bearer {{login.response.body.$.accessToken}}
 
 ### Moj profil bez tokena (401)
 GET {{Identity.Api_HostAddress}}/api/users/me
+
+### Javni profil po id-ju (200, bez mejla). Ovde se uzima id iz zahteva "me".
+GET {{Identity.Api_HostAddress}}/api/users/{{me.response.body.$.id}}
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Javni profil: nepostojeći id (404)
+GET {{Identity.Api_HostAddress}}/api/users/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Izmena mog profila (200, vraća osveženi profil)
+PUT {{Identity.Api_HostAddress}}/api/users/me
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "firstName": "Petar",
+  "lastName": "Perić"
+}
+
+### Izmena mog profila: prazno ime (400)
+PUT {{Identity.Api_HostAddress}}/api/users/me
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "firstName": "",
+  "lastName": "Perić"
+}
