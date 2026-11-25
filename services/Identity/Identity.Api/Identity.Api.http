@@ -50,6 +50,8 @@ Content-Type: application/json
 }
 
 ### Prijava: uspešna (200, vraća token). Korisnik mora prvo biti registrovan.
+# Zahtev ima ime "login", pa ostali zahtevi mogu da uzmu token iz njegovog odgovora.
+# @name login
 POST {{Identity.Api_HostAddress}}/api/auth/login
 Content-Type: application/json
 
@@ -75,3 +77,10 @@ Content-Type: application/json
   "email": "niko@example.com",
   "password": "Lozinka123"
 }
+
+### Moj profil (200). Prvo pošalji zahtev "login" iznad.
+GET {{Identity.Api_HostAddress}}/api/users/me
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Moj profil bez tokena (401)
+GET {{Identity.Api_HostAddress}}/api/users/me

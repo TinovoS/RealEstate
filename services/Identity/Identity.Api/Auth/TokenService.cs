@@ -11,6 +11,9 @@ namespace Identity.Api.Auth;
 // Pravi potpisan JWT za prijavljenog korisnika.
 public class TokenService
 {
+    // Naziv claim-a za ulogu. Za njega ne postoji standardna konstanta.
+    public const string RoleClaimType = "role";
+
     private readonly JwtOptions _options;
 
     public TokenService(IOptions<JwtOptions> options)
@@ -29,7 +32,7 @@ public class TokenService
 
         foreach (var role in roles)
         {
-            claims.Add(new Claim("role", role));
+            claims.Add(new Claim(RoleClaimType, role));
         }
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.Key));
