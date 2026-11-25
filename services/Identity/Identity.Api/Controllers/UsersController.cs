@@ -20,6 +20,9 @@ public class UsersController : ControllerBase
     }
 
     [HttpGet("me")]
+    [ProducesResponseType<UserProfileResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetMe()
     {
         var user = await FindCurrentUserAsync();
@@ -33,6 +36,10 @@ public class UsersController : ControllerBase
     }
 
     [HttpPut("me")]
+    [ProducesResponseType<UserProfileResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateMe(UpdateProfileRequest request)
     {
         var user = await FindCurrentUserAsync();
@@ -61,6 +68,9 @@ public class UsersController : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [ProducesResponseType<PublicProfileResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(string id)
     {
         var user = await _userManager.FindByIdAsync(id);
