@@ -2,6 +2,7 @@ using System.Text;
 using Identity.Api.Auth;
 using Identity.Api.Data;
 using Identity.Api.Models;
+using Identity.Api.Swagger;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -71,7 +72,12 @@ builder.Services
 
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+{
+    // Šema "Bearer" i zahtev za token na operacijama sa [Authorize] (dugme Authorize u Swagger UI-ju).
+    options.AddDocumentTransformer<BearerSecuritySchemeTransformer>();
+    options.AddOperationTransformer<BearerSecurityRequirementTransformer>();
+});
 
 var app = builder.Build();
 
@@ -103,6 +109,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(options =>
     {
         options.SwaggerEndpoint("/openapi/v1.json", "Identity API v1");
+        // Swagger UI čuva token u localStorage pregledača, pa ostaje unet posle osvežavanja stranice.
+        options.EnablePersistAuthorization();
     });
 }
 
