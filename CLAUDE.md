@@ -1,63 +1,106 @@
 # RealEstate
 
-Seminarski rad iz predmeta Razvoj softvera 2: platforma za posredovanje u prodaji nekretnina. Četiri .NET mikroservisa (Identity, Property, Brokerage, Sales), YARP gateway, Angular frontend, PostgreSQL. Pregled strukture je u `README.md`, a predlog arhitekture u `docs/`.
+Seminarski rad (Razvoj softvera 2): platforma za posredovanje u prodaji nekretnina. Četiri .NET 10 mikroservisa, YARP gateway, Angular frontend, PostgreSQL. Ljudski pregled je u `README.md`.
+
+## Način rada (obavezno za svaku sesiju)
+
+- Prvo pročitaj ovaj fajl; ne pretražuj ceo repo da bi otkrio strukturu.
+- Pre čitanja izvornog koda pokreni `git status` i `git diff` i gledaj samo skorašnje izmene.
+- Ceo fajl čitaj samo ako ga menjaš ili ako ovde nema potpisa ili logike koja ti treba.
+- Kad dodaš, premestiš ili promeniš odgovornost neke celine, ažuriraj ovaj fajl u istom koraku.
+
+## Mapa repoa
+
+| Putanja | Celina |
+|---|---|
+| `services/Identity/Identity.Api/` | Identity servis: registracija, prijava, izdavanje JWT-a, profili; jedini pristupa `auth_db`. |
+| `services/Property/` | Property servis (još nema koda): nekretnine, slike, cene, statusi `Draft → OpenForBrokers → Represented → Listed → Sold`; `main_db`, tabele `property_*`. |
+| `services/Brokerage/` | Brokerage servis (još nema koda): ponude brokera, izbor brokera, ugovor o zastupanju; `main_db`, tabele `brokerage_*`. |
+| `services/Sales/` | Sales servis (još nema koda): ponude kupaca, kontraponude, prodaje; `main_db`, tabele `sales_*`. |
+| `gateway/` | YARP API Gateway (još nema koda): jedina ulazna tačka za frontend, prosleđuje po prefiksu rute, CORS. |
+| `shared/Contracts/` | Zajedničke klase događaja između servisa (još prazno; menja se samo uz dogovor tima). |
+| `frontend/` | Angular SPA (još nema koda). |
+| `docker/` | `docker-compose.yaml` (Postgres 16 `re-postgres`, pgAdmin `re-pgadmin`), `postgres/init.sql` pravi `auth_db` i `main_db`, `.env.example`. |
+| `docs/` | Predlog arhitekture i dogovori tima. |
+| `.github/workflows/` | CI (`build.yml`) i podsetnik da je `main` zaključan (`zakljucan-main.yml`). |
+| `.devcontainer/` | Dev Container sa .NET 10 SDK-om. |
+| `RealEstate.slnx`, `Directory.Build.props`, `.editorconfig`, `dotnet-tools.json` | Solution, zajednička MSBuild podešavanja, formatiranje, lokalni `dotnet-ef`. |
+
+## Identity servis (`services/Identity/Identity.Api/`, port 5001)
+
+- `Program.cs`: ulazna tačka. Redom: `AuthDb` connection string → `AppDbContext` (Npgsql) → `AddIdentityCore<AppUser>` (jedinstven mejl; lozinka ≥ 8, veliko i malo slovo, cifra, bez specijalnog znaka) → `JwtOptions` sa `ValidateOnStart` → `TokenService` (singleton) → `AddJwtBearer` (`MapInboundClaims = false`, `ClockSkew` 30 s, name = `name`, role = `role`) → kontroleri → `AddOpenApi` sa dva transformera iz `Swagger/`. Pri pokretanju upisuje uloge iz `Roles.All` koje fale (zato servis bez baze pada na startu). U Development: `/openapi/v1.json` i Swagger UI na `/swagger` (dugme Authorize, token se pamti posle osvežavanja); u Production oba vraćaju 404.
+- `Controllers/AuthController.cs` (`api/auth`): `POST register` → 201 `RegisterResponse` (korisnik i uloga u jednoj transakciji), 400, 409; `POST login` → 200 `LoginResponse`, 401 isti za pogrešan mejl i lozinku.
+- `Controllers/UsersController.cs` (`api/users`, `[Authorize]` na klasi): `GET me` → `UserProfileResponse`; `PUT me` (`UpdateProfileRequest`, samo ime i prezime); `GET {id}` → `PublicProfileResponse` (bez mejla). Id prijavljenog korisnika uvek iz claim-a `sub`.
+- `Controllers/HealthController.cs` (`api/health`): 200 ili 503 po `Database.CanConnectAsync()`.
+- `Auth/JwtOptions.cs`: sekcija `Jwt` (`Issuer`, `Audience`, `Key` ≥ 32 znaka, `ExpiresInMinutes` 1–1440).
+- `Auth/TokenService.cs`: `CreateToken(AppUser, roles)` → `LoginResponse`; claims `sub`, `email`, `name`, `role` (`TokenService.RoleClaimType`), HMAC-SHA256.
+- `Swagger/BearerSecuritySchemeTransformer.cs`: dodaje šemu `Bearer` (http, JWT) u OpenAPI opis. `Swagger/BearerSecurityRequirementTransformer.cs`: označava katancem operacije sa `[Authorize]` bez `[AllowAnonymous]`.
+- `Models/AppUser.cs`: `IdentityUser` + `FirstName`, `LastName`, `CreatedAt`. `Models/Roles.cs`: `Seller`, `Broker`, `Buyer`, `All` (jedino mesto za nazive uloga).
+- `Data/AppDbContext.cs`: `IdentityDbContext<AppUser>`. `Data/Migrations/`: `InitialIdentity` (tabele `AspNet*`).
+- `Dtos/`: `Register*`, `Login*`, `UserProfileResponse`, `PublicProfileResponse`, `UpdateProfileRequest`; validacija atributima, `[ApiController]` sam vraća 400.
+- Greške: `Problem(...)` (`ProblemDetails`) i `ValidationProblem(...)`; svaka akcija ima `[ProducesResponseType]`.
+- Konfiguracija: `appsettings.json` (Jwt bez ključa), `appsettings.Development.json` (lokalna baza `app`/`app` i lažni Jwt ključ). Pravi ključ: env `Jwt__Key`. Primeri zahteva: `Identity.Api.http`.
+
+## Tok podataka
+
+- Prijava: `POST /api/auth/login` → `UserManager.CheckPasswordAsync` → `TokenService` → JWT (issuer `identity-service`, audience `realestate`, 60 min).
+- Zaštićeni zahtev: `Authorization: Bearer <token>` → `UseAuthentication` proveri potpis, izdavača, publiku i rok → `[Authorize]` → kontroler čita `sub`.
+- Ostali servisi ne pitaju Identity: proveravaju isti JWT istim ključem (`Jwt__Key`) i čitaju `sub` i `role`.
+- Gateway (plan, port 5000): `/api/auth`, `/api/users`, `/api/brokers` → Identity 5001; `/api/properties` → Property 5002; `/api/broker-offers`, `/api/contracts`, `/api/brokerage` → Brokerage 5003; `/api/bids`, `/api/transactions` → Sales 5004. Gateway samo prosleđuje; ne proverava token i nema poslovnu logiku.
 
 ## Jezik i stil
 
 - Dokumentacija i commit poruke su na srpskom (latinica).
-- Commit poruke prate oblik `tip: opis` malim slovima, npr. `build: docker okruzenje sa postgres bazom i pgadmin-om`.
+- Commit poruke: `tip: opis` malim slovima, npr. `build: docker okruzenje sa postgres bazom i pgadmin-om`.
 
 ## Grane i pull request-ovi
 
-Podrazumevana grana je `develop`. Pravila ispod sprovodi GitHub kroz dva ruleset-a (Settings → Rules → Rulesets), `develop` i `main`, i važe i za admine.
+Podrazumevana grana je `develop`. Pravila sprovode GitHub ruleset-i `develop` i `main` i važe i za admine.
 
-- Nova grana se uvek pravi iz `develop`, a pull request se otvara ka `develop`.
-- Nazivi grana prate oblik `tip/opis`, npr. `build/solution`.
-- Direktan push na `develop` nije moguć; izmene ulaze samo kroz pull request. Odobrenje drugog člana nije obavezno.
-- Grana `main` je za sada zaključana: ni push ni spajanje pull request-a.
-- Na `develop` i `main` su zabranjeni force push i brisanje grane, pa se commit-i koji su jednom ušli ne mogu menjati ni brisati. Greška se ispravlja novim commit-om (`git revert`) kroz novi pull request.
-- Na radnim granama nema ograničenja: dok pull request nije spojen, commit-i se mogu menjati i slati sa force push-om.
-- Ne predlagati zaobilaženje pravila (gašenje ruleset-a, bypass lista). Ako pravilo smeta, to je odluka tima.
+- Nova grana uvek iz `develop`, pull request ka `develop`. Naziv `tip/opis`, npr. `build/solution`.
+- Direktan push na `develop` nije moguć; samo pull request. Odobrenje drugog člana nije obavezno.
+- `main` je zaključan: ni push ni spajanje pull request-a.
+- Na `develop` i `main` zabranjeni su force push i brisanje; greška se ispravlja `git revert`-om kroz novi pull request.
+- Na radnim granama nema ograničenja dok pull request nije spojen.
+- Ne predlagati zaobilaženje pravila (gašenje ruleset-a, bypass lista); to je odluka tima.
 
 ## CI
 
-- `.github/workflows/build.yml` se pokreće za svaki pull request ka `develop` i posle spajanja. Ima dva posla nad `RealEstate.slnx`: `build` (`dotnet build`) i `test` (`dotnet test`), koji kreće tek kad `build` uspe.
-- U ruleset-u `develop` obavezna je provera `build`: pull request ne može da se spoji dok ona ne prođe. Provera `test` se izvršava, ali još nije obavezna.
-- `.github/workflows/zakljucan-main.yml`: svaki pull request ka `main` dobija crvenu proveru, kao podsetnik da se cilja `develop`.
+- `.github/workflows/build.yml`: za pull request ka `develop` i posle spajanja; posao `build` (`dotnet build RealEstate.slnx`), pa `test` (`dotnet test RealEstate.slnx`) tek kad `build` uspe.
+- Ruleset `develop` traži prolaz provere `build`; `test` se izvršava, ali još nije obavezan.
+- `zakljucan-main.yml`: svaki pull request ka `main` dobija crvenu proveru.
 - Workflow ne može da zabrani push; to rade ruleset-i.
 
 ## Testovi
 
-- Test projekat stoji pored projekta koji testira i nosi njegovo ime sa nastavkom `.Tests`: `services/<Servis>/<Projekat>.Tests`, npr. `services/Identity/Identity.Api.Tests`. Za gateway je to `gateway/<Projekat>.Tests`.
-- Testovi se pišu u xUnit-u. Novi test projekat se pravi sa `dotnet new xunit` i dodaje u `RealEstate.slnx`; CI pokreće samo testove iz solution-a.
-- Lokalno se svi testovi pokreću sa `dotnet test RealEstate.slnx`.
-- U CI-ju nema baze ni drugih servisa, pa test koji ih traži tamo pada.
+- Test projekat stoji pored testiranog i nosi ime sa `.Tests`: `services/<Servis>/<Projekat>.Tests`, za gateway `gateway/<Projekat>.Tests`.
+- xUnit; novi projekat sa `dotnet new xunit`, pa u `RealEstate.slnx` (CI pokreće samo testove iz solution-a).
+- Lokalno: `dotnet test RealEstate.slnx`.
+- U CI-ju nema baze ni drugih servisa, pa test koji ih traži tamo pada. Identity trenutno nema testova.
 
 ## Solution i zajednička podešavanja
 
-- `RealEstate.slnx` nabraja sve .NET projekte. Novi projekat se dodaje sa `dotnet sln RealEstate.slnx add <putanja do .csproj>`, inače ga CI ne gradi.
-- `Directory.Build.props` važi za sve projekte u repou: `net10.0`, `Nullable` i `ImplicitUsings`. Ta podešavanja se ne ponavljaju u pojedinačnim `.csproj` fajlovima.
-- `.editorconfig` određuje formatiranje: UTF-8, LF, 2 razmaka, a 4 razmaka za C#.
-- Microsoft-ovi paketi (`Microsoft.*`) i alat `dotnet-ef` moraju biti iz serije 10.0.x. `dotnet add package` bez `--version` bira seriju 11, koja ne radi sa `net10.0` (greška `NU1202`).
+- Novi projekat: `dotnet sln RealEstate.slnx add <putanja do .csproj>`, inače ga CI ne gradi.
+- `Directory.Build.props` (`net10.0`, `Nullable`, `ImplicitUsings`) važi za sve projekte; ne ponavljati u `.csproj`.
+- `.editorconfig`: UTF-8, LF, 2 razmaka, za C# 4.
+- `Microsoft.*` paketi i `dotnet-ef` moraju biti 10.0.x. `dotnet add package` bez `--version` bira seriju 11 (greška `NU1202`).
 
 ## Baza i migracije
 
-- Iz Dev Containera se Postgres vidi na `host.docker.internal:5432`. Na domaćinu mora biti pokrenut `docker compose up -d`.
-- Alat `dotnet-ef` je upisan u `dotnet-tools.json`. Posle kloniranja ili rebuild-a kontejnera instalira se sa `dotnet tool restore`.
-- Migracije servisa stoje u `Data/Migrations` unutar projekta i idu u Git. Komande se kucaju iz korena repoa:
-  - nova migracija: `dotnet ef migrations add <Ime> --project services/Identity/Identity.Api --output-dir Data/Migrations`
-  - izvršavanje nad bazom: `dotnet ef database update --project services/Identity/Identity.Api`
-- Migracija koja je već spojena u `develop` se ne menja. Izmena tabela ide kroz novu migraciju.
+- Iz Dev Containera Postgres je na `host.docker.internal:5432` (`app`/`app`); na domaćinu mora raditi `docker compose up -d` iz `docker/`.
+- `dotnet-ef` iz `dotnet-tools.json`; posle kloniranja ili rebuild-a: `dotnet tool restore`.
+- Migracije su u `Data/Migrations` projekta i idu u Git. Iz korena repoa:
+  - nova: `dotnet ef migrations add <Ime> --project services/Identity/Identity.Api --output-dir Data/Migrations`
+  - izvršavanje: `dotnet ef database update --project services/Identity/Identity.Api`
+- Migracija spojena u `develop` se ne menja; izmena tabela ide kroz novu migraciju.
 
 ## Razvojno okruženje
 
-Razvija se u Dev Containeru (`.devcontainer/devcontainer.json`), ne na lokalno instaliranom SDK-u.
-
-- **U kontejneru** (`/workspaces/RealEstate`): `dotnet` komande, build, testovi, debug. Tu je .NET 10 SDK.
-- **Na računaru domaćinu**: `docker compose` iz foldera `docker/`. U kontejneru nema Docker CLI-ja.
-- Node nije u kontejneru; dodaje se kad počne rad na Angular frontendu.
-
-Ako `dotnet` nije na putanji, sesija radi na domaćinu, a ne u kontejneru. Tada ne predlagati lokalnu instalaciju SDK-a, nego otvaranje repoa u kontejneru.
+- Razvija se u Dev Containeru (`.devcontainer/devcontainer.json`), ne na lokalnom SDK-u.
+- U kontejneru (`/workspaces/RealEstate`): `dotnet` komande, build, testovi, debug.
+- Na računaru domaćinu: `docker compose` iz `docker/`. U kontejneru nema Docker CLI-ja ni Node-a (Node se dodaje kad počne Angular).
+- Servis se pokreće iz svog foldera (`dotnet run` ili `dotnet bin/Debug/net10.0/<Projekat>.dll`); iz korena repoa ne nalazi `appsettings.Development.json`.
+- Ako `dotnet` nije na putanji, sesija radi na domaćinu: ne predlagati instalaciju SDK-a, nego otvaranje repoa u kontejneru.
 
 ## Pravila arhitekture
 

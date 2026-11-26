@@ -15,6 +15,8 @@ public class HealthController : ControllerBase
     }
 
     [HttpGet]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Get()
     {
         var canConnect = await _db.Database.CanConnectAsync();
