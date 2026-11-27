@@ -1,0 +1,27 @@
+@Gateway.Api_HostAddress = http://localhost:5000
+
+### Da li gateway radi (200). Ostale servise ne proverava.
+GET {{Gateway.Api_HostAddress}}/api/gateway/health
+Accept: application/json
+
+### Prijava kroz gateway (200, vraća token). Zahtev ide u Identity servis.
+# Korisnik mora prvo biti registrovan (vidi Identity.Api.http).
+# Zahtev ima ime "login", pa ostali zahtevi mogu da uzmu token iz njegovog odgovora.
+# @name login
+POST {{Gateway.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "pera@example.com",
+  "password": "Lozinka123"
+}
+
+### Moj profil kroz gateway (200). Prvo pošalji zahtev "login" iznad.
+GET {{Gateway.Api_HostAddress}}/api/users/me
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Moj profil bez tokena (401, odgovara Identity, ne gateway)
+GET {{Gateway.Api_HostAddress}}/api/users/me
+
+### Nekretnine (502 dok Property servis ne postoji)
+GET {{Gateway.Api_HostAddress}}/api/properties

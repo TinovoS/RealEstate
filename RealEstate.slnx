@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/gateway/">
+    <Project Path="gateway/Gateway.Api/Gateway.Api.csproj" />
+  </Folder>
   <Folder Name="/services/" />
   <Folder Name="/services/Identity/">
     <Project Path="services/Identity/Identity.Api/Identity.Api.csproj" />
