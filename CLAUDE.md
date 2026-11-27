@@ -17,7 +17,7 @@ Seminarski rad (Razvoj softvera 2): platforma za posredovanje u prodaji nekretni
 | `services/Property/` | Property servis (još nema koda): nekretnine, slike, cene, statusi `Draft → OpenForBrokers → Represented → Listed → Sold`; `main_db`, tabele `property_*`. |
 | `services/Brokerage/` | Brokerage servis (još nema koda): ponude brokera, izbor brokera, ugovor o zastupanju; `main_db`, tabele `brokerage_*`. |
 | `services/Sales/` | Sales servis (još nema koda): ponude kupaca, kontraponude, prodaje; `main_db`, tabele `sales_*`. |
-| `gateway/` | YARP API Gateway (još nema koda): jedina ulazna tačka za frontend, prosleđuje po prefiksu rute, CORS. |
+| `gateway/Gateway.Api/` | YARP API Gateway (port 5000): jedina ulazna tačka za frontend, prosleđuje po prefiksu rute, CORS. |
 | `shared/Contracts/` | Zajedničke klase događaja između servisa (još prazno; menja se samo uz dogovor tima). |
 | `frontend/` | Angular SPA (još nema koda). |
 | `docker/` | `docker-compose.yaml` (Postgres 16 `re-postgres`, pgAdmin `re-pgadmin`), `postgres/init.sql` pravi `auth_db` i `main_db`, `.env.example`. |
@@ -41,12 +41,18 @@ Seminarski rad (Razvoj softvera 2): platforma za posredovanje u prodaji nekretni
 - Greške: `Problem(...)` (`ProblemDetails`) i `ValidationProblem(...)`; svaka akcija ima `[ProducesResponseType]`.
 - Konfiguracija: `appsettings.json` (Jwt bez ključa), `appsettings.Development.json` (lokalna baza `app`/`app` i lažni Jwt ključ). Pravi ključ: env `Jwt__Key`. Primeri zahteva: `Identity.Api.http`.
 
+## Gateway (`gateway/Gateway.Api/`, port 5000)
+
+- `Program.cs`: CORS (podrazumevana politika, origin-i iz `Cors:AllowedOrigins`, bilo koja metoda i zaglavlje, bez credentials) → `AddReverseProxy().LoadFromConfig("ReverseProxy")` → `UseCors()` pre proxy-ja (preflight odgovara gateway) → `GET /api/gateway/health` (minimal API, `{"status":"ok"}`) → `MapReverseProxy()`. Nema autentifikacije, kontrolera, Swagger-a ni baze.
+- `appsettings.json`: `Cors:AllowedOrigins` = `http://localhost:4200`; `ReverseProxy` sa 9 ruta (`/api/<prefiks>/{**catch-all}`, bez transformacija) i 4 klastera (`identity`, `property`, `brokerage`, `sales`), svaki sa destinacijom `d1` na `localhost:5001–5004`. U compose-u se adresa menja env-om, npr. `ReverseProxy__Clusters__identity__Destinations__d1__Address=http://identity-api:8080/`. `Cors:AllowedOrigins` nikad ne sme biti `*`.
+- Paket `Yarp.ReverseProxy` 2.3.0 (nema net10 target, radi preko net8). Servis koji ne radi → 502; nepoznata putanja → 404. Primeri zahteva: `Gateway.Api.http`.
+
 ## Tok podataka
 
 - Prijava: `POST /api/auth/login` → `UserManager.CheckPasswordAsync` → `TokenService` → JWT (issuer `identity-service`, audience `realestate`, 60 min).
 - Zaštićeni zahtev: `Authorization: Bearer <token>` → `UseAuthentication` proveri potpis, izdavača, publiku i rok → `[Authorize]` → kontroler čita `sub`.
 - Ostali servisi ne pitaju Identity: proveravaju isti JWT istim ključem (`Jwt__Key`) i čitaju `sub` i `role`.
-- Gateway (plan, port 5000): `/api/auth`, `/api/users`, `/api/brokers` → Identity 5001; `/api/properties` → Property 5002; `/api/broker-offers`, `/api/contracts`, `/api/brokerage` → Brokerage 5003; `/api/bids`, `/api/transactions` → Sales 5004. Gateway samo prosleđuje; ne proverava token i nema poslovnu logiku.
+- Gateway (port 5000): `/api/auth`, `/api/users`, `/api/brokers` → Identity 5001; `/api/properties` → Property 5002; `/api/broker-offers`, `/api/contracts`, `/api/brokerage` → Brokerage 5003; `/api/bids`, `/api/transactions` → Sales 5004. Gateway samo prosleđuje; ne proverava token i nema poslovnu logiku.
 
 ## Jezik i stil
 
@@ -76,7 +82,7 @@ Podrazumevana grana je `develop`. Pravila sprovode GitHub ruleset-i `develop` i 
 - Test projekat stoji pored testiranog i nosi ime sa `.Tests`: `services/<Servis>/<Projekat>.Tests`, za gateway `gateway/<Projekat>.Tests`.
 - xUnit; novi projekat sa `dotnet new xunit`, pa u `RealEstate.slnx` (CI pokreće samo testove iz solution-a).
 - Lokalno: `dotnet test RealEstate.slnx`.
-- U CI-ju nema baze ni drugih servisa, pa test koji ih traži tamo pada. Identity trenutno nema testova.
+- U CI-ju nema baze ni drugih servisa, pa test koji ih traži tamo pada. Identity i gateway trenutno nemaju testove.
 
 ## Solution i zajednička podešavanja
 
